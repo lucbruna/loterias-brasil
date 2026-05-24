@@ -50,7 +50,6 @@ Source: ".\dist\icon-192.png"; DestDir: "{app}"; Flags: ignoreversion
 Source: ".\dist\icon-512.png"; DestDir: "{app}"; Flags: ignoreversion
 Source: ".\dist\manifest.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: ".\dist\sw.js"; DestDir: "{app}"; Flags: ignoreversion
-Source: ".\launcher.bat"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\icon.ico"; Comment: "{#MyAppName} — Análise Inteligente de Loterias"
@@ -58,7 +57,7 @@ Name: "{group}\Desinstalar {#MyAppName}"; Filename: "{uninstallexe}"; IconFilena
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\icon.ico"; Comment: "{#MyAppName} — Análise Inteligente de Loterias"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\index.html"; Description: "Iniciar {#MyAppName} agora"; Flags: postinstall nowait skipifsilent shellexec
+Filename: "{app}\launcher.bat"; Description: "Iniciar {#MyAppName} agora"; Flags: postinstall nowait skipifsilent shellexec
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
