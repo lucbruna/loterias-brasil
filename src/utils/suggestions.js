@@ -12,8 +12,6 @@ function weightedPick(disp, pesos, picks) {
   return sel.sort((a, b) => a - b)
 }
 
-function ifPresent(n, arr) { return arr.includes(n) }
-
 function estrategiaFrequencia(stats, maxNum, picks) {
   const totalCtx = stats?.totalConcursos || 0
   const freq = stats?.freq || {}
