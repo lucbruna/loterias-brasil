@@ -159,9 +159,8 @@ function estrategiaSoma(stats, maxNum, picks) {
 
   let melhor = null
   let melhorDist = Infinity
-  const tentativas = 200
 
-  for (let t = 0; t < tentativas; t++) {
+  for (let t = 0; t < 200; t++) {
     const pesos = {}
     for (let i = 1; i <= maxNum; i++) {
       const oc = freq[i] || 0
@@ -256,10 +255,8 @@ function filtrarPadroes(selecionados, ranking, maxNum, picks) {
   return resultado
 }
 
-export function builtinSug(stats, maxNum, picks, lastDraw) {
-  const totalCtx = stats?.totalConcursos || 0
-  const freq = stats?.freq || {}
-
+/* ---- Geração única ---- */
+function gerarUmaSugestao(stats, maxNum, picks, lastDraw, pesosEstrategia) {
   const s1 = estrategiaFrequencia(stats, maxNum, picks)
   const s2 = estrategiaGap(stats, maxNum, picks)
   const s3 = estrategiaRecente(stats, maxNum, picks)
@@ -268,15 +265,15 @@ export function builtinSug(stats, maxNum, picks, lastDraw) {
   const s6 = estrategiaParidade(stats, maxNum, picks)
   const s7 = estrategiaSoma(stats, maxNum, picks)
 
+  const todas = [s1, s2, s3, s4, s5, s6, s7]
+  const pesos = pesosEstrategia || [3.0, 2.5, 3.0, 3.5, 2.0, 2.5, 2.5]
+
   const votos = {}
-  const todasEstrategias = [s1, s2, s3, s4, s5, s6, s7]
-  const pesosEstrategia = [3.0, 2.5, 3.0, 3.5, 2.0, 2.5, 2.5]
-  for (let e = 0; e < todasEstrategias.length; e++) {
-    for (const n of todasEstrategias[e]) {
-      votos[n] = (votos[n] || 0) + pesosEstrategia[e]
+  for (let e = 0; e < todas.length; e++) {
+    for (const n of todas[e]) {
+      votos[n] = (votos[n] || 0) + pesos[e]
     }
   }
-
   for (let i = 1; i <= maxNum; i++) {
     votos[i] = (votos[i] || 0) + Math.random() * 0.3
   }
@@ -287,6 +284,45 @@ export function builtinSug(stats, maxNum, picks, lastDraw) {
 
   let selecionados = ranking.slice(0, picks).map(x => x.n).sort((a, b) => a - b)
   selecionados = filtrarPadroes(selecionados, ranking, maxNum, picks)
+
+  const totalCtx = stats?.totalConcursos || 0
+  const freq = stats?.freq || {}
+
+  const scoreConfianca = (() => {
+    if (totalCtx === 0) return 0
+    let score = 0
+    score += Math.min(totalCtx / 100, 1) * 3
+    const concordancias = todas.map(s =>
+      selecionados.filter(n => s.includes(n)).length / picks
+    )
+    const concMedia = concordancias.reduce((a, b) => a + b, 0) / concordancias.length
+    score += concMedia * 3
+    const cv = parseFloat(stats?.cv || 100)
+    score += Math.max(0, 1 - cv / 100) * 2
+    const zeros = selecionados.filter(n => !freq[n]).length
+    score += Math.max(0, 1 - zeros / picks) * 2
+    return Math.min(score, 10)
+  })()
+
+  return { selecionados, scoreConfianca, todas, ranking, s1, s2, s3, s4, s5, s6, s7 }
+}
+
+export function builtinSug(stats, maxNum, picks, lastDraw, pesosEstrategia) {
+  const totalCtx = stats?.totalConcursos || 0
+  const freq = stats?.freq || {}
+
+  let melhor = null
+  let melhorScore = -1
+
+  for (let i = 0; i < 5; i++) {
+    const r = gerarUmaSugestao(stats, maxNum, picks, lastDraw, pesosEstrategia)
+    if (r.scoreConfianca > melhorScore) {
+      melhorScore = r.scoreConfianca
+      melhor = r
+    }
+  }
+
+  const { selecionados, scoreConfianca, todas, ranking, s1, s2, s3, s4, s5, s6, s7 } = melhor
 
   const pares = selecionados.filter(n => n % 2 === 0).length
   const impares = picks - pares
@@ -321,22 +357,6 @@ export function builtinSug(stats, maxNum, picks, lastDraw) {
     return scores[0][1] > 0 ? scores[0][0] : 'Ensemble Total'
   })()
 
-  const scoreConfianca = (() => {
-    if (totalCtx === 0) return 0
-    let score = 0
-    score += Math.min(totalCtx / 100, 1) * 3
-    const concordancias = [s1, s2, s3, s4, s5, s6, s7].map(s =>
-      selecionados.filter(n => s.includes(n)).length / picks
-    )
-    const concMedia = concordancias.reduce((a, b) => a + b, 0) / concordancias.length
-    score += concMedia * 3
-    const cv = parseFloat(stats?.cv || 100)
-    score += Math.max(0, 1 - cv / 100) * 2
-    const zeros = selecionados.filter(n => !freq[n]).length
-    score += Math.max(0, 1 - zeros / picks) * 2
-    return Math.min(score, 10)
-  })()
-
   const confianca = scoreConfianca >= 7 ? 'Alta' : scoreConfianca >= 4 ? 'Média' : 'Baixa'
   const estrategia = totalCtx > 0 ? `Ensemble: ${melhorEstrategia}` : 'Distribuição Aleatória'
 
@@ -354,9 +374,38 @@ export function builtinSug(stats, maxNum, picks, lastDraw) {
     analise,
     parImpar: `${pares} pares e ${impares} ímpares`,
     dezenas: dezenasStr,
-    confianca,
+    confianca: scoreConfianca >= 7 ? 'Alta' : scoreConfianca >= 4 ? 'Média' : 'Baixa',
     scoreConfianca: scoreConfianca.toFixed(1),
-    estrategiasUsadas: todasEstrategias,
+    estrategiasUsadas: todas,
     votos: Object.fromEntries(ranking.slice(0, picks).map(({ n, v }) => [n, v.toFixed(1)]))
   }
+}
+
+/* ---- Validação pós-sorteio ---- */
+export function validateSuggestions(suggestions, drawnNumbers, lottery) {
+  const results = []
+  for (const sug of suggestions) {
+    if (sug.lottery !== lottery) continue
+    const acertos = sug.numbers.filter(n => drawnNumbers.includes(n)).length
+    results.push({ id: sug.id, acertos, total: sug.numbers.length, numbers: sug.numbers, data: sug.date })
+  }
+  return results.sort((a, b) => b.acertos - a.acertos)
+}
+
+/* ---- Pesos adaptativos por avaliação ---- */
+export function computeAdaptiveWeights(ratingsByStrategy) {
+  const defaults = [3.0, 2.5, 3.0, 3.5, 2.0, 2.5, 2.5]
+  if (!ratingsByStrategy || Object.keys(ratingsByStrategy).length === 0) return defaults
+
+  const strategyKeys = ['frequencia', 'gap', 'recente', 'repeticao', 'balanceada', 'paridade', 'soma']
+  const weights = strategyKeys.map((key, i) => {
+    const r = ratingsByStrategy[key]
+    if (r && r.count >= 2) {
+      const factor = r.avg / 3
+      return defaults[i] * Math.max(0.5, Math.min(1.5, factor))
+    }
+    return defaults[i]
+  })
+
+  return weights
 }

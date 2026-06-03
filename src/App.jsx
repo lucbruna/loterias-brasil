@@ -8,7 +8,7 @@ import SugTab from './components/SugTab'
 import { LOTTERIES, PROBS, LOTTERY_IDS } from './utils/lotteries'
 import { fetchCaixa, fetchHistoryStats } from './utils/api'
 import { computeStats } from './utils/stats'
-import { builtinSug } from './utils/suggestions'
+import { builtinSug, computeAdaptiveWeights, validateSuggestions } from './utils/suggestions'
 import { genWithAI, AI_PROVIDERS } from './utils/ai'
 import { loadMemory, saveMemory, loadTheme, saveTheme } from './utils/cache'
 import './global.css'
@@ -108,20 +108,23 @@ export default function App() {
       }
       if (!stLocal) stLocal = { quentes: [], frios: [], atrasados: [], paridade: {}, totalConcursos: 0 }
       const lastDraw = results[active]?.numeros || null
+      const adaptiveWeights = computeAdaptiveWeights(mem.strategyRatings)
       let sugData = null
       let tentativas = 0
       const maxTentativas = mem.aiProvider && (mem.geminiKey || mem.qwenKey) ? 2 : 3
       while (tentativas < maxTentativas) {
         tentativas++
         if (mem.aiProvider && (mem.geminiKey || mem.qwenKey)) sugData = await genWithAI(mem, stLocal, L, active, lastDraw)
-        if (!sugData) sugData = builtinSug(stLocal, L.maxNum, L.picks, lastDraw)
+        if (!sugData) sugData = builtinSug(stLocal, L.maxNum, L.picks, lastDraw, adaptiveWeights)
         if (sugData?.confianca !== 'Baixa') break
       }
       if (!sugData) throw new Error('Não foi possível gerar sugestão')
+      const estrategiaNome = (sugData.estrategia || '').replace('Ensemble: ', '')
       const entry = {
         id: Date.now(), date: new Date().toISOString(), lottery: active,
         numbers: sugData.numeros, estrategia: sugData.estrategia,
-        analise: sugData.analise, rating: null
+        analise: sugData.analise, rating: null,
+        estrategiaNome
       }
       mem.suggestions.unshift(entry)
       if (mem.suggestions.length > 50) mem.suggestions.length = 50
@@ -186,7 +189,19 @@ export default function App() {
   const rateSug = useCallback((id, stars) => {
     const m = loadMemory()
     const f = m.suggestions.find(s => s.id === id)
-    if (f) { f.rating = stars; saveMemory(m); setMemory(m) }
+    if (f) {
+      f.rating = stars
+      if (f.estrategiaNome && stars >= 1) {
+        const key = f.estrategiaNome.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '')
+        if (!m.strategyRatings) m.strategyRatings = {}
+        if (!m.strategyRatings[key]) m.strategyRatings[key] = { total: 0, count: 0, avg: 0 }
+        const r = m.strategyRatings[key]
+        r.total += stars
+        r.count++
+        r.avg = r.total / r.count
+      }
+      saveMemory(m); setMemory(m)
+    }
     showToast(`${stars} ★`)
   }, [showToast])
 

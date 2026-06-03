@@ -27,13 +27,14 @@ export function loadMemory() {
       if (!p.geminiKey && envGem) p.geminiKey = envGem
       if (!p.qwenKey && envQwen) p.qwenKey = envQwen
       if (!p.aiProvider && (p.geminiKey || p.qwenKey)) p.aiProvider = p.geminiKey ? 'gemini' : 'qwen'
+      if (!p.strategyRatings) p.strategyRatings = {}
       return p
     }
   } catch {}
   const envGem = import.meta.env?.VITE_GEMINI_API_KEY || ''
   const envQwen = import.meta.env?.VITE_QWEN_API_KEY || ''
   const prov = envGem ? 'gemini' : envQwen ? 'qwen' : ''
-  return { suggestions: [], geminiKey: envGem, qwenKey: envQwen, aiProvider: prov }
+  return { suggestions: [], geminiKey: envGem, qwenKey: envQwen, aiProvider: prov, strategyRatings: {} }
 }
 
 export function saveMemory(m) {

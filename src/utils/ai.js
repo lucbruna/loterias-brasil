@@ -121,8 +121,8 @@ Critério de confiança:
 - "Média": quando há dados razoáveis mas a seleção não é ideal em algum aspecto (ex: ligeiro desequilíbrio)
 - "Baixa": use APENAS se não houver dados históricos suficientes (< 10 concursos) ou se for impossível equilibrar as regras
 
-Responda APENAS JSON válido, sem markdown, sem texto extra:
-{"numeros":[${L.picks} inteiros],"estrategia":"3-5 palavras em português","analise":"breve análise em português","parImpar":"X pares, Y ímpares","dezenas":"distribuição","confianca":"Alta/Média/Baixa"}`
+Responda APENAS JSON válido, sem markdown, sem texto extra. Exemplo de resposta para Mega-Sena com 6 números entre 1 e 60:
+{"numeros":[8,23,25,37,42,55],"estrategia":"Equilíbrio frequência e atraso","analise":"3 pares e 3 ímpares, soma média 190, sem sequências, 1 repetição do último sorteio","parImpar":"3 pares, 3 ímpares","dezenas":"01-09 (1), 21-29 (2), 31-39 (1), 41-49 (1), 51-60 (1)","confianca":"Alta"}`
 
   const providers = mem.aiProvider === 'gemini' ? ['gemini', 'qwen'] : ['qwen', 'gemini']
   for (const p of providers) {
