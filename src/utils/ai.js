@@ -61,6 +61,12 @@ export async function genWithAI(mem, st, L, active) {
     ? `Q1=${st.quartil[0]}, Q2=${st.quartil[1]}, Q3=${st.quartil[2]}, Q4=${st.quartil[3]}`
     : 'n/d'
   const totalCtx = st?.totalConcursos || 0
+  const sumStats = st?.sumStats || {}
+  const sumInfo = sumStats.avg ? `Soma média=${sumStats.avg} (min=${sumStats.min}, max=${sumStats.max})` : 'n/d'
+  const repeticoes = st?.repeticoes || {}
+  const repStr = Object.keys(repeticoes).length
+    ? Object.entries(repeticoes).sort((a, b) => a[0] - b[0]).map(([k, v]) => `${k} repetidos: ${v}x`).join(', ')
+    : 'n/d'
 
   const freqArr = st?.freq
     ? Object.entries(st.freq).map(([n, c]) => [parseInt(n), c]).sort((a, b) => b[1] - a[1]).slice(0, 10)
@@ -76,6 +82,8 @@ ${L.name} — ${totalCtx} concursos analisados:
 - Paridade: ${paridadeStr}
 - Distribuição Quartis: ${quartilStr}
 - Coeficiente de Variação: ${cvStr}
+- Soma dos números: ${sumInfo}
+- Repetições entre sorteios: ${repStr}
 - Top frequências: ${freqStr}
 
 ${ctx}
@@ -85,7 +93,8 @@ Regras:
 2. Equilibre entre números quentes (que mais saem) e atrasados (que estão devendo)
 3. Evite padrões óbvios: sequências (12,13,14), múltiplos (10,20,30), ou todos pares/ímpares
 4. Distribuição heterogênea: não concentre em uma única dezena
-5. Prefira números com frequência moderada (nem os mais quentes nem os mais frios)
+5. A soma total deve ficar próxima de ${sumStats.avg || ((1 + L.maxNum) / 2 * L.picks)} (±${Math.round((sumStats.max - sumStats.min) * 0.3 || L.maxNum * L.picks * 0.1)})
+6. Prefira números com frequência moderada (nem os mais quentes nem os mais frios)
 
 Responda APENAS JSON válido (sem markdown):
 {"numeros":[${L.picks} inteiros],"estrategia":"3-5 palavras em português","analise":"breve análise em português","parImpar":"X pares, Y ímpares","dezenas":"distribuição","confianca":"Alta/Média/Baixa"}`

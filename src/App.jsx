@@ -85,7 +85,7 @@ export default function App() {
     setLoading(r => ({ ...r, f: true }))
     setFreqProg(0)
     try {
-      const fd = await fetchHistoryStats(id, l.apiName, 50)
+      const fd = await fetchHistoryStats(id, l.apiName, 200)
       setFreqCache(c => ({ ...c, [id]: fd }))
       setStats(c => ({ ...c, [id]: computeStats(fd, l.maxNum) }))
       setFreqProg(fd.totalContests)

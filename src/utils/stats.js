@@ -1,15 +1,28 @@
 export function calcGaps(fd, maxNum) {
-  const { freq = {}, totalContests = 0 } = fd || {}
+  const { freq = {}, totalContests = 0, lastAppearance = {}, lastContest = 0 } = fd || {}
   const gaps = {}
   for (let i = 1; i <= maxNum; i++) {
     const oc = freq[i] || 0
-    gaps[i] = oc > 0 ? Math.round(totalContests / oc) : totalContests + 10
+    if (lastAppearance[i] && lastContest > 0) {
+      gaps[i] = lastContest - lastAppearance[i]
+    } else {
+      gaps[i] = oc > 0 ? Math.round(totalContests / oc) : totalContests + 10
+    }
   }
   return gaps
 }
 
 export function computeStats(fd, maxNum) {
-  const { freq = {}, totalContests = 0 } = fd || {}
+  const {
+    freq = {},
+    totalContests = 0,
+    lastAppearance = {},
+    lastContest = 0,
+    recencyWeightedFreq = null,
+    sumStats = null,
+    repeticoes = null
+  } = fd || {}
+
   const entries = Object.entries(freq)
     .map(([n, c]) => [parseInt(n), c])
     .filter(([n]) => n >= 1 && n <= maxNum)
@@ -22,8 +35,17 @@ export function computeStats(fd, maxNum) {
   const quentes = entries.slice(0, Math.min(10, entries.length)).map(x => x[0])
   const coldSet = new Set([...entries.slice(-Math.min(8, entries.length)), ...zeroNums].map(x => x[0]))
   const frios = [...coldSet].slice(0, 10)
-  const minC = entries.length ? entries[entries.length - 1][1] : 0
-  const atrasados = allN.filter(n => (freq[n] || 0) <= minC + 1).slice(0, 5)
+
+  const gaps = calcGaps(fd, maxNum)
+  const atrasados = Object.entries(gaps)
+    .filter(([n]) => freq[n] && freq[n] > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(x => parseInt(x[0]))
+  if (atrasados.length < 5) {
+    const missing = allN.filter(n => !atrasados.includes(n) && !freq[n]).slice(0, 5 - atrasados.length)
+    atrasados.push(...missing)
+  }
 
   const pares = allN.filter(n => n % 2 === 0).reduce((s, n) => s + (freq[n] || 0), 0)
   const impares = allN.filter(n => n % 2 !== 0).reduce((s, n) => s + (freq[n] || 0), 0)
@@ -53,8 +75,15 @@ export function computeStats(fd, maxNum) {
     lastDigits[dig] = (lastDigits[dig] || 0) + c
   }
 
+  const faixas10 = {}
+  for (const [n, c] of entries) {
+    const f = Math.floor((n - 1) / 10) * 10
+    faixas10[f] = (faixas10[f] || 0) + c
+  }
+
   return {
     quentes, frios, atrasados,
+    gaps,
     paridade: tot
       ? { pares: ((pares / tot) * 100).toFixed(1) + '%', impares: ((impares / tot) * 100).toFixed(1) + '%' }
       : { pares: '—', impares: '—' },
@@ -64,6 +93,11 @@ export function computeStats(fd, maxNum) {
     cv: (media > 0 ? (desvPad / media) * 100 : 0).toFixed(1) + '%',
     quartil: quartil.map(v => v.toFixed(0)),
     lastDigits,
-    pairCorr: {}
+    faixas10,
+    recencyWeightedFreq,
+    sumStats,
+    repeticoes,
+    lastAppearance,
+    lastContest
   }
 }
