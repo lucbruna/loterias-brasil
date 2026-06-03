@@ -1,9 +1,21 @@
 import { CAIXA_PROXY } from './lotteries'
 import { loadFreqCache, saveFreqCache } from './cache'
 
+async function fetchWithRetry(url, signal, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, { signal })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return res
+    } catch (e) {
+      if (attempt === retries || signal.aborted) throw e
+      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)))
+    }
+  }
+}
+
 export async function fetchCaixa(path, signal) {
-  const res = await fetch(`${CAIXA_PROXY}/${path}`, { signal })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const res = await fetchWithRetry(`${CAIXA_PROXY}/${path}`, signal)
   const d = await res.json()
   if (!d || !d.listaDezenas) throw new Error('Resposta inválida')
   const numeros = d.listaDezenas.map(n => parseInt(n, 10)).filter(n => !isNaN(n)).sort((a, b) => a - b)
@@ -26,7 +38,7 @@ function computeRecencyWeight(index, total) {
   return 1 + ((total - index) / total) * 2
 }
 
-export async function fetchHistoryStats(id, apiName, maxCtx = 200) {
+export async function fetchHistoryStats(id, apiName, maxCtx = 200, onProgress) {
   const cached = loadFreqCache(id)
   if (cached && Date.now() - cached.cachedAt < CACHE_TTL) return cached
 
@@ -48,6 +60,7 @@ export async function fetchHistoryStats(id, apiName, maxCtx = 200) {
   sumAccum.total += sum
   allContestNumbers.push(latest.numeros)
   total++
+  if (onProgress) onProgress(total)
 
   let cur = latest.anterior
   let iterations = 0
@@ -73,6 +86,7 @@ export async function fetchHistoryStats(id, apiName, maxCtx = 200) {
         total++
       }
     }
+    if (onProgress) onProgress(total)
     cur -= BATCH_SIZE
     if (iterations < MAX_ITERATIONS - 1) await new Promise(r => setTimeout(r, 100))
     iterations++

@@ -87,7 +87,7 @@ export default function App() {
     setLoading(r => ({ ...r, f: true }))
     setFreqProg(0)
     try {
-      const fd = await fetchHistoryStats(id, l.apiName, 200)
+      const fd = await fetchHistoryStats(id, l.apiName, 200, (n) => setFreqProg(n))
       setFreqCache(c => ({ ...c, [id]: fd }))
       setStats(c => ({ ...c, [id]: computeStats(fd, l.maxNum) }))
       setFreqProg(fd.totalContests)
@@ -109,7 +109,7 @@ export default function App() {
       if (!stLocal) stLocal = { quentes: [], frios: [], atrasados: [], paridade: {}, totalConcursos: 0 }
       const lastDraw = results[active]?.numeros || null
       let sugData = null
-      if (mem.aiProvider && (mem.geminiKey || mem.qwenKey)) sugData = await genWithAI(mem, stLocal, L, active)
+      if (mem.aiProvider && (mem.geminiKey || mem.qwenKey)) sugData = await genWithAI(mem, stLocal, L, active, lastDraw)
       if (!sugData) sugData = builtinSug(stLocal, L.maxNum, L.picks, lastDraw)
       const entry = {
         id: Date.now(), date: new Date().toISOString(), lottery: active,
