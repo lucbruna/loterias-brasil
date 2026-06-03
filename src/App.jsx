@@ -109,8 +109,15 @@ export default function App() {
       if (!stLocal) stLocal = { quentes: [], frios: [], atrasados: [], paridade: {}, totalConcursos: 0 }
       const lastDraw = results[active]?.numeros || null
       let sugData = null
-      if (mem.aiProvider && (mem.geminiKey || mem.qwenKey)) sugData = await genWithAI(mem, stLocal, L, active, lastDraw)
-      if (!sugData) sugData = builtinSug(stLocal, L.maxNum, L.picks, lastDraw)
+      let tentativas = 0
+      const maxTentativas = mem.aiProvider && (mem.geminiKey || mem.qwenKey) ? 2 : 3
+      while (tentativas < maxTentativas) {
+        tentativas++
+        if (mem.aiProvider && (mem.geminiKey || mem.qwenKey)) sugData = await genWithAI(mem, stLocal, L, active, lastDraw)
+        if (!sugData) sugData = builtinSug(stLocal, L.maxNum, L.picks, lastDraw)
+        if (sugData?.confianca !== 'Baixa') break
+      }
+      if (!sugData) throw new Error('Não foi possível gerar sugestão')
       const entry = {
         id: Date.now(), date: new Date().toISOString(), lottery: active,
         numbers: sugData.numeros, estrategia: sugData.estrategia,

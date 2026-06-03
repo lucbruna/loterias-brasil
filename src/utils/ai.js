@@ -116,6 +116,11 @@ Regras:
 6. Prefira números com frequência moderada (nem os mais quentes nem os mais frios)
 7. Considere incluir 1-2 números do último sorteio se a taxa histórica de repetição for alta
 
+Critério de confiança:
+- "Alta": quando há dados suficientes (+50 concursos) e a seleção segue todas as regras acima com equilíbrio
+- "Média": quando há dados razoáveis mas a seleção não é ideal em algum aspecto (ex: ligeiro desequilíbrio)
+- "Baixa": use APENAS se não houver dados históricos suficientes (< 10 concursos) ou se for impossível equilibrar as regras
+
 Responda APENAS JSON válido, sem markdown, sem texto extra:
 {"numeros":[${L.picks} inteiros],"estrategia":"3-5 palavras em português","analise":"breve análise em português","parImpar":"X pares, Y ímpares","dezenas":"distribuição","confianca":"Alta/Média/Baixa"}`
 
