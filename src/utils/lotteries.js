@@ -21,13 +21,27 @@ export const PROBS = {
     { label: '16 pontos', chance: `1 em ${Math.round(comb(100, 20) / (comb(20, 16) * comb(80, 4))).toExponential(0)}` },
     { label: '15 pontos', chance: `1 em ${Math.round(comb(100, 20) / (comb(20, 15) * comb(80, 5))).toExponential(0)}` },
     { label: '0 pontos', chance: `1 em ${Math.round(comb(100, 20) / comb(80, 20)).toExponential(0)}` }
+  ],
+  quina: [
+    { label: 'Quina (5)', chance: `1 em ${comb(80, 5).toLocaleString('pt-BR')}` },
+    { label: 'Quadra (4)', chance: `1 em ${Math.round(comb(80, 5) / (comb(5, 4) * comb(75, 1))).toLocaleString('pt-BR')}` },
+    { label: 'Terno (3)', chance: `1 em ${Math.round(comb(80, 5) / (comb(5, 3) * comb(75, 2))).toLocaleString('pt-BR')}` }
+  ],
+  timemania: [
+    { label: '7 números', chance: `1 em ${comb(80, 7).toExponential(4).replace('+', '')}` },
+    { label: '6 números', chance: `1 em ${Math.round(comb(80, 7) / (comb(7, 6) * comb(73, 1))).toExponential(2).replace('+', '')}` },
+    { label: '5 números', chance: `1 em ${Math.round(comb(80, 7) / (comb(7, 5) * comb(73, 2))).toExponential(2).replace('+', '')}` },
+    { label: '4 números', chance: `1 em ${Math.round(comb(80, 7) / (comb(7, 4) * comb(73, 3))).toLocaleString('pt-BR')}` },
+    { label: '3 números', chance: `1 em ${Math.round(comb(80, 7) / (comb(7, 3) * comb(73, 4))).toLocaleString('pt-BR')}` }
   ]
 }
 
 export const LOTTERIES = {
   megasena: { id: 'megasena', name: 'Mega-Sena', abbr: 'MEGA-SENA', apiName: 'megasena', maxNum: 60, picks: 6, color: '#00d468', darkBg: '#001a0e', glow: '0,212,104', border: 'rgba(0,212,104,0.35)', ball: 'linear-gradient(145deg,#00d468 0%,#005c2e 100%)', ballBorder: '#00ff88', icon: '\uD83C\uDFB1' },
   lotofacil: { id: 'lotofacil', name: 'Lotofácil', abbr: 'LOTOFÁCIL', apiName: 'lotofacil', maxNum: 25, picks: 15, color: '#d966ff', darkBg: '#1a0020', glow: '217,102,255', border: 'rgba(217,102,255,0.35)', ball: 'linear-gradient(145deg,#d966ff 0%,#5c0080 100%)', ballBorder: '#ee88ff', icon: '\uD83D\uDC9C' },
-  lotomania: { id: 'lotomania', name: 'Lotomania', abbr: 'LOTOMANIA', apiName: 'lotomania', maxNum: 100, picks: 20, color: '#ff9500', darkBg: '#1a0d00', glow: '255,149,0', border: 'rgba(255,149,0,0.35)', ball: 'linear-gradient(145deg,#ff9500 0%,#7a3c00 100%)', ballBorder: '#ffbb44', icon: '\uD83D\uDFE0' }
+  lotomania: { id: 'lotomania', name: 'Lotomania', abbr: 'LOTOMANIA', apiName: 'lotomania', maxNum: 100, picks: 20, color: '#ff9500', darkBg: '#1a0d00', glow: '255,149,0', border: 'rgba(255,149,0,0.35)', ball: 'linear-gradient(145deg,#ff9500 0%,#7a3c00 100%)', ballBorder: '#ffbb44', icon: '\uD83D\uDFE0' },
+  quina: { id: 'quina', name: 'Quina', abbr: 'QUINA', apiName: 'quina', maxNum: 80, picks: 5, color: '#2663eb', darkBg: '#000d24', glow: '38,99,235', border: 'rgba(38,99,235,0.35)', ball: 'linear-gradient(145deg,#2663eb 0%,#0f2970 100%)', ballBorder: '#5599ff', icon: '\u0035\uFE0F\u20E3' },
+  timemania: { id: 'timemania', name: 'Timemania', abbr: 'TIMEMANIA', apiName: 'timemania', maxNum: 80, picks: 7, color: '#19b028', darkBg: '#001a04', glow: '25,176,40', border: 'rgba(25,176,40,0.35)', ball: 'linear-gradient(145deg,#19b028 0%,#0a5214 100%)', ballBorder: '#44dd55', icon: '\u26BD' }
 }
 
 export const CAIXA_PROXY = '/api/caixa'

@@ -395,7 +395,7 @@ export default function App() {
           }}>
             Dados oficiais via <strong style={{ color: '#666' }}>Caixa Econômica Federal</strong>
             {' · '}{aiConfigured ? `IA: ${AI_PROVIDERS[memory.aiProvider]?.name}` : 'Estatística embutida'}
-            <br />Mega-Sena: C(60,6) · Lotofácil: C(25,15) · Lotomania: C(100,20)
+            <br />Mega-Sena: C(60,6) · Lotofácil: C(25,15) · Lotomania: C(100,20) · Quina: C(80,5) · Timemania: C(80,7)
           </footer>
         </div>
       </div>
