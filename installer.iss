@@ -51,8 +51,6 @@ Source: ".\dist\icon-512.png"; DestDir: "{app}"; Flags: ignoreversion
 Source: ".\dist\manifest.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: ".\dist\sw.js"; DestDir: "{app}"; Flags: ignoreversion
 Source: ".\launcher.bat"; DestDir: "{app}"; Flags: ignoreversion
-Source: ".\launcher.bat"; DestDir: "{app}"; Flags: ignoreversion
-Source: ".\launcher.bat"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\icon.ico"; Comment: "{#MyAppName} — Análise Inteligente de Loterias"
