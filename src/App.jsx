@@ -32,10 +32,11 @@ export default function App() {
   const [freqProg, setFreqProg] = useState(0)
   const [theme, setTheme] = useState(loadTheme)
   const [copied, setCopied] = useState(false)
-  const statsLoadingRef = useRef(false)
+  const loadingLotteries = useRef({})
   const timerRef = useRef(null)
   const countRef = useRef(null)
   const toastTimer = useRef(null)
+  const abortRef = useRef(null)
 
   const L = LOTTERIES[active] || LOTTERIES.megasena
   const result = results[active]
@@ -64,23 +65,24 @@ export default function App() {
     return `${m}:${String(s % 60).padStart(2, '0')}`
   }, [])
 
-  /* ---- Buscar resultados ---- */
   const fetchResults = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort()
+    abortRef.current = new AbortController()
+    const signal = abortRef.current.signal
     setLoading(r => ({ ...r, r: true }))
     const out = {}
     await Promise.allSettled(LOTTERY_IDS.map(async (key) => {
+      if (signal.aborted) return
       try { out[key] = await fetchCaixa(LOTTERIES[key].apiName, AbortSignal.timeout(5000)) }
-      catch (e) { console.error(`${LOTTERIES[key].name}:`, e.message) }
+      catch (e) { if (e.name !== 'AbortError') console.error(`${LOTTERIES[key].name}:`, e.message) }
     }))
-    if (Object.keys(out).length > 0) { setResults(out); setLastUpd(new Date()) }
-    setLoading(r => ({ ...r, r: false }))
-    setRefreshSec(1800)
+    if (!signal.aborted && Object.keys(out).length > 0) { setResults(out); setLastUpd(new Date()) }
+    if (!signal.aborted) { setLoading(r => ({ ...r, r: false })); setRefreshSec(1800) }
   }, [])
 
-  /* ---- Carregar estatísticas ---- */
   const loadStats = useCallback(async (id) => {
-    if (statsLoadingRef.current) return
-    statsLoadingRef.current = true
+    if (loadingLotteries.current[id]) return
+    loadingLotteries.current[id] = true
     const l = LOTTERIES[id]
     setLoading(r => ({ ...r, f: true }))
     setFreqProg(0)
@@ -91,10 +93,9 @@ export default function App() {
       setFreqProg(fd.totalContests)
     } catch (e) { console.error(`Stats ${l.name}:`, e.message) }
     setLoading(r => ({ ...r, f: false }))
-    statsLoadingRef.current = false
+    loadingLotteries.current[id] = false
   }, [])
 
-  /* ---- Gerar sugestão ---- */
   const generateSug = useCallback(async () => {
     setLoading(r => ({ ...r, s: true }))
     setError(null)
@@ -106,9 +107,10 @@ export default function App() {
         setStats(c => ({ ...c, [active]: stLocal }))
       }
       if (!stLocal) stLocal = { quentes: [], frios: [], atrasados: [], paridade: {}, totalConcursos: 0 }
+      const lastDraw = results[active]?.numeros || null
       let sugData = null
       if (mem.aiProvider && (mem.geminiKey || mem.qwenKey)) sugData = await genWithAI(mem, stLocal, L, active)
-      if (!sugData) sugData = builtinSug(stLocal, L.maxNum, L.picks)
+      if (!sugData) sugData = builtinSug(stLocal, L.maxNum, L.picks, lastDraw)
       const entry = {
         id: Date.now(), date: new Date().toISOString(), lottery: active,
         numbers: sugData.numeros, estrategia: sugData.estrategia,
@@ -121,26 +123,40 @@ export default function App() {
       setSugs(p => ({ ...p, [active]: { ...sugData, id: entry.id } }))
     } catch (e) { setError(e.message || 'Erro') }
     setLoading(r => ({ ...r, s: false }))
-  }, [active, L, stats, freqCache])
+  }, [active, L, stats, freqCache, results])
 
-  /* ---- Efeitos ---- */
   useEffect(() => {
-    fetchResults()
-    timerRef.current = setInterval(fetchResults, 30 * 60 * 1000)
+    if (abortRef.current) abortRef.current.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    const signal = ctrl.signal
+    ;(async () => {
+      setLoading(r => ({ ...r, r: true }))
+      const out = {}
+      await Promise.allSettled(LOTTERY_IDS.map(async (key) => {
+        if (signal.aborted) return
+        try { out[key] = await fetchCaixa(LOTTERIES[key].apiName, AbortSignal.timeout(5000)) }
+        catch (e) { if (e.name !== 'AbortError') console.error(`${LOTTERIES[key].name}:`, e.message) }
+      }))
+      if (!signal.aborted && Object.keys(out).length > 0) { setResults(out); setLastUpd(new Date()) }
+      if (!signal.aborted) setLoading(r => ({ ...r, r: false }))
+    })()
+    timerRef.current = setInterval(async () => {
+      await fetchResults()
+    }, 30 * 60 * 1000)
     countRef.current = setInterval(() => setRefreshSec(n => n > 0 ? n - 1 : 1800), 1000)
-    return () => { clearInterval(timerRef.current); clearInterval(countRef.current) }
-  }, [fetchResults])
+    return () => { ctrl.abort(); clearInterval(timerRef.current); clearInterval(countRef.current) }
+  }, []) // eslint-disable-line
 
   useEffect(() => {
     if (tab === 'frequencia' || tab === 'sugestao') {
-      if (!freqCache[active] && !statsLoadingRef.current) loadStats(active)
+      if (!freqCache[active] && !loadingLotteries.current[active]) loadStats(active)
       else if (freqCache[active] && !stats[active]) {
         setStats(c => ({ ...c, [active]: computeStats(freqCache[active], L.maxNum) }))
       }
     }
   }, [tab, active, loadStats, freqCache, stats, L.maxNum])
 
-  /* ---- Handlers ---- */
   const openCfg = useCallback(() => {
     setCfgProvider(memory.aiProvider || 'gemini')
     setCfgKey(memory.aiProvider === 'gemini' ? memory.geminiKey : memory.qwenKey || '')
@@ -203,7 +219,6 @@ export default function App() {
         color: 'var(--fg,#e0e0ec)', fontFamily: "'DM Sans', sans-serif",
         position: 'relative', overflowX: 'hidden'
       }}>
-        {/* Toast */}
         {toast && (
           <div style={{
             position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
@@ -227,7 +242,6 @@ export default function App() {
           color={L.color}
         />
 
-        {/* BG Effects */}
         <div style={{
           position: 'fixed', top: -300, right: -200, width: 700, height: 700,
           borderRadius: '50%',
@@ -247,7 +261,6 @@ export default function App() {
         }} />
 
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 860, margin: '0 auto', padding: '26px 16px 40px' }}>
-          {/* HEADER */}
           <header style={{ textAlign: 'center', marginBottom: 30 }} className="fadeUp">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 4 }}>
               <div style={{ height: 1, width: 45, background: `linear-gradient(to right,transparent,${L.color})`, transition: 'all .8s' }} />
@@ -275,7 +288,6 @@ export default function App() {
             </p>
           </header>
 
-          {/* Action Buttons */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 10 }}>
             <button onClick={toggleTheme} style={{
               display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -300,7 +312,6 @@ export default function App() {
             </button>
           </div>
 
-          {/* Lottery Tabs */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 20, overflowX: 'auto', paddingBottom: 4 }}>
             {Object.values(LOTTERIES).map(l => (
               <button
@@ -334,7 +345,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* Sub Tabs */}
           <div style={{
             display: 'flex', gap: 3, marginBottom: 16,
             background: 'rgba(255,255,255,.03)', borderRadius: 11, padding: 3,
@@ -364,48 +374,24 @@ export default function App() {
             ))}
           </div>
 
-          {/* Content */}
           {tab === 'resultado' && (
-            <ResultTab
-              loading={loading.r}
-              result={result}
-              L={L}
-              prob={prob}
-              onSync={syncResults}
-            />
+            <ResultTab loading={loading.r} result={result} L={L} prob={prob} onSync={syncResults} />
           )}
-
           {tab === 'frequencia' && (
-            <FreqTab
-              loading={loading.f}
-              st={st}
-              L={L}
-              onRefresh={refreshStats}
-            />
+            <FreqTab loading={loading.f} st={st} L={L} onRefresh={refreshStats} />
           )}
-
           {tab === 'sugestao' && (
             <SugTab
-              prob={prob}
-              L={L}
-              sugHistory={sugHistory}
-              loading={loading.s}
-              sug={sug}
-              currentRating={currentRating}
-              copied={copied}
-              onGenerate={generateSug}
-              onCopy={handleCopy}
-              onRate={rateSug}
-              aiConfigured={aiConfigured}
-              error={error}
+              prob={prob} L={L} sugHistory={sugHistory}
+              loading={loading.s} sug={sug} currentRating={currentRating}
+              copied={copied} onGenerate={generateSug} onCopy={handleCopy}
+              onRate={rateSug} aiConfigured={aiConfigured} error={error}
             />
           )}
 
-          {/* Footer */}
           <footer style={{
             textAlign: 'center', marginTop: 36, paddingTop: 16,
-            borderTop: '1px solid rgba(255,255,255,.04)',
-            fontSize: 10.5, color: '#444'
+            borderTop: '1px solid rgba(255,255,255,.04)', fontSize: 10.5, color: '#444'
           }}>
             Dados oficiais via <strong style={{ color: '#666' }}>Caixa Econômica Federal</strong>
             {' · '}{aiConfigured ? `IA: ${AI_PROVIDERS[memory.aiProvider]?.name}` : 'Estatística embutida'}
